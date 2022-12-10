@@ -16,9 +16,7 @@ jobs:
       - checkout
       - run:
           name: "Say hello"
-          command: "echo Hello, World!"
-                    sudo apt install build-essential python libsdl2-dev libfontconfig-dev libfreetype6-dev
-                    ./waf configure -T release -8
+          command: "echo Hello, World!;sudo apt build-essential python libsdl2-dev libfontconfig-dev libfreetype6-dev;./waf configure -T release""
 
 # Invoke jobs via workflows
 # See: https://circleci.com/docs/2.0/configuration-reference/#workflows
