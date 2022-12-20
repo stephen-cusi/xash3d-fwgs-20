@@ -368,7 +368,7 @@ qboolean Cmd_GetSavesList( const char *s, char *completedname, int length )
 	string		matchbuf;
 	int		i, numsaves;
 
-	t = FS_Search( va( "%s%s*.sav", DEFAULT_SAVE_DIRECTORY, s ), true, true );	// lookup only in gamedir
+	t = FS_Search( va( DEFAULT_SAVE_DIRECTORY "%s*.sav", s ), true, true );	// lookup only in gamedir
 	if( !t ) return false;
 
 	COM_FileBase( t->filenames[0], matchbuf );
@@ -1324,8 +1324,9 @@ static void Cmd_WriteHelp(const char *name, const char *unused, const char *desc
 {
 	int	length;
 
-	if( !desc || !Q_strcmp( desc, "" ))
+	if( !COM_CheckString( desc ))
 		return; // ignore fantom cmds
+
 	if( name[0] == '+' || name[0] == '-' )
 		return; // key bindings
 

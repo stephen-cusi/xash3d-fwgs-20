@@ -269,43 +269,35 @@ void Host_AbortCurrentFrame( void )
 
 /*
 ==================
-Host_CheckSleep
+Host_CalcSleep
 ==================
 */
-void Host_CheckSleep( void )
+static int Host_CalcSleep( void )
 {
-	int sleeptime = host_sleeptime->value;
-
 #ifndef XASH_DEDICATED
 	// never sleep in timedemo for benchmarking purposes
 	// also don't sleep with vsync for less lag
 	if( CL_IsTimeDemo( ) || CVAR_TO_BOOL( gl_vsync ))
-		return;
+		return 0;
 #endif
 
 	if( Host_IsDedicated() )
 	{
 		// let the dedicated server some sleep
-		Sys_Sleep( sleeptime );
+		return host_sleeptime->value;
 	}
-	else
+
+	switch( host.status )
 	{
-		if( host.status == HOST_NOFOCUS )
-		{
-			if( SV_Active() && CL_IsInGame( ))
-				Sys_Sleep( sleeptime ); // listenserver
-			else Sys_Sleep( 20 ); // sleep 20 ms otherwise
-		}
-		else if( host.status == HOST_SLEEP )
-		{
-			// completely sleep in minimized state
-			Sys_Sleep( 20 );
-		}
-		else
-		{
-			Sys_Sleep( sleeptime );
-		}
+	case HOST_NOFOCUS:
+		if( SV_Active() && CL_IsInGame())
+			return host_sleeptime->value;
+		// fallthrough
+	case HOST_SLEEP:
+		return 20;
 	}
+
+	return host_sleeptime->value;
 }
 
 void Host_NewInstance( const char *name, const char *finalmsg )
@@ -353,7 +345,7 @@ void Host_ChangeGame_f( void )
 	}
 	else
 	{
-		const char *arg1 = va( "%s%s", (host.type == HOST_NORMAL) ? "" : "#", Cmd_Argv( 1 ));
+		const char *arg1 = va( "%s", Cmd_Argv( 1 ));
 		const char *arg2 = va( "change game to '%s'", FI->games[i]->title );
 
 		Host_NewInstance( arg1, arg2 );
@@ -631,27 +623,53 @@ Returns false if the time is too short to run a frame
 qboolean Host_FilterTime( float time )
 {
 	static double	oldtime;
-	double		fps;
-	double		scale = sys_timescale.value;
+	double fps, scale = sys_timescale.value;
 
 	host.realtime += time * scale;
-	fps = Host_CalcFPS( );
+	fps = Host_CalcFPS();
 
 	// clamp the fps in multiplayer games
 	if( fps != 0.0 )
 	{
+		static int sleeps;
+		double targetframetime;
+		int sleeptime = Host_CalcSleep();
+
 		// limit fps to withing tolerable range
 		fps = bound( MIN_FPS, fps, MAX_FPS );
 
-		if( Host_IsDedicated() )
+		if( Host_IsDedicated( ))
+			targetframetime = ( 1.0 / ( fps + 1.0 ));
+		else targetframetime = ( 1.0 / fps );
+
+		if(( host.realtime - oldtime ) < targetframetime * scale )
 		{
-			if(( host.realtime - oldtime ) < ( 1.0 / ( fps + 1.0 )) * scale)
-				return false;
+			if( sleeptime > 0 && sleeps > 0 )
+			{
+				Sys_Sleep( sleeptime );
+				sleeps--;
+			}
+
+			return false;
 		}
-		else
+
+		if( sleeptime > 0 && sleeps <= 0 )
 		{
-			if(( host.realtime - oldtime ) < ( 1.0 / fps ) * scale )
-				return false;
+			if( host.status == HOST_FRAME )
+			{
+				// give few sleeps this frame with small margin
+				double targetsleeptime = targetframetime - host.pureframetime * 2;
+
+				// don't sleep if we can't keep up with the framerate
+				if( targetsleeptime > 0 )
+					sleeps = targetsleeptime / ( sleeptime * 0.001 );
+				else sleeps = 0;
+			}
+			else
+			{
+				// always sleep at least once in minimized/nofocus state
+				sleeps = 1;
+			}
 		}
 	}
 
@@ -674,19 +692,16 @@ Host_Frame
 */
 void Host_Frame( float time )
 {
-	static qboolean slept = false;
+	double t1, t2;
 
 	// decide the simulation time
 	if( !Host_FilterTime( time ))
-	{
-		if( !slept )
-		{
-			Host_CheckSleep();
-			slept = true;
-		}
 		return;
-	}
-	slept = false;
+
+	t1 = Sys_DoubleTime();
+
+	if( host.framecount == 0 )
+		Con_DPrintf( "Time to first frame: %.3f seconds\n", t1 - host.starttime );
 
 	Host_InputFrame ();  // input frame
 	Host_ClientBegin (); // begin client
@@ -694,6 +709,10 @@ void Host_Frame( float time )
 	Host_ServerFrame (); // server frame
 	Host_ClientFrame (); // client frame
 	HTTP_Run();			 // both server and client
+
+	t2 = Sys_DoubleTime();
+
+	host.pureframetime = t2 - t1;
 
 	host.framecount++;
 }
@@ -1113,6 +1132,8 @@ int EXPORT Host_Main( int argc, char **argv, const char *progname, int bChangeGa
 {
 	static double	oldtime, newtime;
 
+	host.starttime = Sys_DoubleTime();
+
 	pChangeGame = func;	// may be NULL
 
 	Host_InitCommon( argc, argv, progname, bChangeGame );
@@ -1137,7 +1158,7 @@ int EXPORT Host_Main( int argc, char **argv, const char *progname, int bChangeGa
 
 	build = Cvar_Get( "buildnum", va( "%i", Q_buildnum_compat()), FCVAR_READ_ONLY, "returns a current build number" );
 	ver = Cvar_Get( "ver", va( "%i/%s (hw build %i)", PROTOCOL_VERSION, XASH_COMPAT_VERSION, Q_buildnum_compat()), FCVAR_READ_ONLY, "shows an engine version" );
-	Cvar_Get( "host_ver", va( "%i %s %s %s %s", Q_buildnum(), XASH_VERSION, Q_buildos(), Q_buildarch(), Q_buildcommit() ), FCVAR_READ_ONLY, "detailed info about this build" );
+	Cvar_Get( "host_ver", va( "%i " XASH_VERSION " %s %s %s", Q_buildnum(), Q_buildos(), Q_buildarch(), Q_buildcommit() ), FCVAR_READ_ONLY, "detailed info about this build" );
 	Cvar_Get( "host_lowmemorymode", va( "%i", XASH_LOW_MEMORY ), FCVAR_READ_ONLY, "indicates if engine compiled for low RAM consumption (0 - normal, 1 - low engine limits, 2 - low protocol limits)" );
 
 	Mod_Init();
@@ -1206,11 +1227,17 @@ int EXPORT Host_Main( int argc, char **argv, const char *progname, int bChangeGa
 
 	oldtime = Sys_DoubleTime() - 0.1;
 
-	if( Host_IsDedicated() && GameState->nextstate == STATE_RUNFRAME )
+	if( Host_IsDedicated( ))
 	{
+		// in dedicated server input system can't set HOST_FRAME status
+		// so set it here as we're finished initializing
+		host.status = HOST_FRAME;
+
+		if( GameState->nextstate == STATE_RUNFRAME )
+			Con_Printf( "Type 'map <mapname>' to start game... (TAB-autocomplete is working too)\n" );
+
 		// execute server.cfg after commandline
 		// so we have a chance to set servercfgfile
-		Con_Printf( "Type 'map <mapname>' to start game... (TAB-autocomplete is working too)\n" );
 		Cbuf_AddText( va( "exec %s\n", Cvar_VariableString( "servercfgfile" )));
 		Cbuf_Execute();
 	}

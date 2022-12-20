@@ -27,7 +27,7 @@ GNU General Public License for more details.
 #define MAX_CMD_BUFFER		8000
 #define CONNECTION_PROBLEM_TIME	15.0	// 15 seconds
 #define CL_CONNECTION_RETRIES		10
-#define CL_TEST_RETRIES_NORESPONCE	2
+#define CL_TEST_RETRIES_NORESPONCE	3
 #define CL_TEST_RETRIES		5
 
 CVAR_DEFINE_AUTO( mp_decals, "300", FCVAR_ARCHIVE, "decals limit in multiplayer" );
@@ -40,7 +40,6 @@ CVAR_DEFINE_AUTO( cl_logofile, "lambda", FCVAR_ARCHIVE, "player logo name" );
 CVAR_DEFINE_AUTO( cl_logocolor, "orange", FCVAR_ARCHIVE, "player logo color" );
 CVAR_DEFINE_AUTO( cl_logoext, "bmp", FCVAR_ARCHIVE, "temporary cvar to tell engine which logo must be packed" );
 CVAR_DEFINE_AUTO( cl_test_bandwidth, "1", FCVAR_ARCHIVE, "test network bandwith before connection" );
-convar_t	*rcon_client_password;
 convar_t	*rcon_address;
 convar_t	*cl_timeout;
 convar_t	*cl_nopred;
@@ -1109,8 +1108,9 @@ Resend a connect message if the last one has timed out
 */
 void CL_CheckForResend( void )
 {
-	netadr_t	adr;
+	netadr_t adr;
 	int res;
+	qboolean bandwidthTest;
 
 	if( cls.internetservers_wait )
 		CL_InternetServers_f();
@@ -1175,14 +1175,18 @@ void CL_CheckForResend( void )
 		return;
 	}
 
+	bandwidthTest = !cls.legacymode && cl_test_bandwidth.value;
 	cls.serveradr = adr;
-	cls.max_fragment_size = Q_max( FRAGMENT_MAX_SIZE, cls.max_fragment_size >> Q_min( 1, cls.connect_retry ));
+	cls.max_fragment_size = Q_min( FRAGMENT_MAX_SIZE, cls.max_fragment_size / (cls.connect_retry + 1));
 	cls.connect_time = host.realtime; // for retransmit requests
 	cls.connect_retry++;
 
+	if( bandwidthTest )
+		Con_Printf( "Connecting to %s... [retry #%i, max fragment size %i]\n", cls.servername, cls.connect_retry, cls.max_fragment_size );
+	else
 	Con_Printf( "Connecting to %s... [retry #%i]\n", cls.servername, cls.connect_retry );
 
-	if( !cls.legacymode && cl_test_bandwidth.value )
+	if( bandwidthTest )
 		Netchan_OutOfBandPrint( NS_CLIENT, adr, "bandwidth %i %i\n", PROTOCOL_VERSION, cls.max_fragment_size );
 	else
 		Netchan_OutOfBandPrint( NS_CLIENT, adr, "getchallenge\n" );
@@ -1307,7 +1311,7 @@ void CL_Rcon_f( void )
 	string command;
 	int	i;
 
-	if( !COM_CheckString( rcon_client_password->string ))
+	if( !COM_CheckString( rcon_password.string ))
 	{
 		Con_Printf( "You must set 'rcon_password' before issuing an rcon command.\n" );
 		return;
@@ -1322,7 +1326,7 @@ void CL_Rcon_f( void )
 	NET_Config( true, false );	// allow remote
 
 	Q_strcat( message, "rcon " );
-	Q_strcat( message, rcon_client_password->string );
+	Q_strcat( message, rcon_password.string );
 	Q_strcat( message, " " );
 
 	for( i = 1; i < Cmd_Argc(); i++ )
@@ -2467,11 +2471,18 @@ void CL_ProcessFile( qboolean successfully_received, const char *filename )
 	{
 		if( filename[0] != '!' )
 			Con_Printf( "processing %s\n", filename );
+
+		if( !Q_strnicmp( filename, "downloaded/", 11 ))
+		{
+			// skip "downloaded/" part to avoid mismatch with needed resources list
+			filename += 11; 
+		}
 	}
 	else if( !successfully_received )
 	{
 		Con_Printf( S_ERROR "server failed to transmit file '%s'\n", CL_CleanFileName( filename ));
 	}
+
 	if( cls.legacymode )
 	{
 		if( host.downloadcount > 0 )
@@ -2883,7 +2894,6 @@ void CL_InitLocal( void )
 	cl_charset = Cvar_Get( "cl_charset", "utf-8", FCVAR_ARCHIVE, "1-byte charset to use (iconv style)" );
 	hud_utf8 = Cvar_Get( "hud_utf8", "0", FCVAR_ARCHIVE, "Use utf-8 encoding for hud text" );
 
-	rcon_client_password = Cvar_Get( "rcon_password", "", FCVAR_PRIVILEGED, "remote control client password" );
 	rcon_address = Cvar_Get( "rcon_address", "", FCVAR_PRIVILEGED, "remote control address" );
 
 	cl_trace_messages = Cvar_Get( "cl_trace_messages", "0", FCVAR_ARCHIVE|FCVAR_CHEAT, "enable message names tracing (good for developers)");

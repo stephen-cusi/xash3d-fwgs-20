@@ -700,20 +700,23 @@ NET_AdrToString
 */
 const char *NET_AdrToString( const netadr_t a )
 {
+	static char s[64];
+
 	if( a.type == NA_LOOPBACK )
 		return "loopback";
 	if( a.type6 == NA_IP6 )
 	{
-		char s[64];
 		uint8_t ip6[16];
 
 		NET_NetadrToIP6Bytes( ip6, &a );
 		IPv6AddrToString( s, ip6, ntohs( a.port ), 0 );
 
-		return va( "%s", s );
+		return s;
 	}
 
-	return va( "%i.%i.%i.%i:%i", a.ip[0], a.ip[1], a.ip[2], a.ip[3], ntohs( a.port ));
+	Q_sprintf( s, "%i.%i.%i.%i:%i", a.ip[0], a.ip[1], a.ip[2], a.ip[3], ntohs( a.port ));
+
+	return s;
 }
 
 /*
@@ -723,19 +726,23 @@ NET_BaseAdrToString
 */
 const char *NET_BaseAdrToString( const netadr_t a )
 {
+	static char s[64];
+
 	if( a.type == NA_LOOPBACK )
 		return "loopback";
 	if( a.type6 == NA_IP6 )
 	{
-		char s[64];
 		uint8_t ip6[16];
 
 		NET_NetadrToIP6Bytes( ip6, &a );
 		IPv6IPToString( s, ip6 );
 
-		return va( "%s", s );
+		return s;
 	}
-	return va( "%i.%i.%i.%i", a.ip[0], a.ip[1], a.ip[2], a.ip[3] );
+
+	Q_sprintf( s, "%i.%i.%i.%i", a.ip[0], a.ip[1], a.ip[2], a.ip[3] );
+
+	return s;
 }
 
 /*
@@ -924,9 +931,67 @@ qboolean NET_CompareAdr( const netadr_t a, const netadr_t b )
 		    return true;
 	}
 
-
 	Con_DPrintf( S_ERROR "NET_CompareAdr: bad address type\n" );
 	return false;
+}
+
+/*
+====================
+NET_CompareAdrSort
+
+Network address sorting comparator
+guaranteed to return -1, 0 or 1
+====================
+*/
+int NET_CompareAdrSort( const void *_a, const void *_b )
+{
+	const netadr_t *a = _a, *b = _b;
+	int porta, portb, portdiff, addrdiff;
+
+	if( a->type6 != b->type6 )
+		return bound( -1, (int)a->type6 - (int)b->type6, 1 );
+
+	porta = ntohs( a->port );
+	portb = ntohs( b->port );
+	if( porta < portb )
+		portdiff = -1;
+	else if( porta > portb )
+		portdiff = 1;
+	else
+		portdiff = 0;
+
+	switch( a->type6 )
+	{
+	case NA_IP6:
+		if(( addrdiff = NET_NetadrIP6Compare( a, b )))
+			return addrdiff;
+		// fallthrough
+	case NA_MULTICAST_IP6:
+		return portdiff;
+	}
+
+	// don't check for full type earlier, as it's value depends on v6 address
+	if( a->type != b->type )
+		return bound( -1, (int)a->type - (int)b->type, 1 );
+
+	switch( a->type )
+	{
+	case NA_IP:
+		if(( addrdiff = memcmp( a->ip, b->ip, sizeof( a->ipx ))))
+			return addrdiff;
+		// fallthrough
+	case NA_BROADCAST:
+		return portdiff;
+
+	case NA_IPX:
+		if(( addrdiff = memcmp( a->ipx, b->ipx, sizeof( a->ipx ))))
+			return addrdiff;
+		// fallthrough
+	case NA_BROADCAST_IPX:
+		return portdiff;
+	}
+
+	return 0;
 }
 
 /*
@@ -1868,6 +1933,7 @@ void NET_GetLocalAddress( void )
 	char		buff[512];
 	struct sockaddr_storage	address;
 	WSAsize_t		namelen;
+	const char		*net_addr_string;
 
 	memset( &net_local, 0, sizeof( netadr_t ));
 	memset( &net6_local, 0, sizeof( netadr_t ));
@@ -1895,8 +1961,9 @@ void NET_GetLocalAddress( void )
 			if( !NET_IsSocketError( getsockname( net.ip_sockets[NS_SERVER], (struct sockaddr *)&address, &namelen )))
 			{
 				net_local.port = ((struct sockaddr_in *)&address)->sin_port;
-				Con_Printf( "Server IPv4 address %s\n", NET_AdrToString( net_local ));
-				Cvar_FullSet( "net_address", va( "%s", NET_AdrToString( net_local )), net_address->flags );
+				net_addr_string = NET_AdrToString( net_local );
+				Con_Printf( "Server IPv4 address %s\n", net_addr_string );
+				Cvar_FullSet( "net_address", net_addr_string, net_address->flags );
 			}
 			else Con_DPrintf( S_ERROR "Could not get TCP/IPv4 address. Reason: %s\n", NET_ErrorString( ));
 		}
@@ -1917,8 +1984,9 @@ void NET_GetLocalAddress( void )
 			if( !NET_IsSocketError( getsockname( net.ip6_sockets[NS_SERVER], (struct sockaddr *)&address, &namelen )))
 			{
 				net6_local.port = ((struct sockaddr_in6 *)&address)->sin6_port;
-				Con_Printf( "Server IPv6 address %s\n", NET_AdrToString( net6_local ));
-				Cvar_FullSet( "net6_address", va( "%s", NET_AdrToString( net6_local )), net6_address->flags );
+				net_addr_string = NET_AdrToString( net6_local );
+				Con_Printf( "Server IPv6 address %s\n", net_addr_string );
+				Cvar_FullSet( "net6_address", net_addr_string, net6_address->flags );
 			}
 			else Con_DPrintf( S_ERROR "Could not get TCP/IPv6 address. Reason: %s\n", NET_ErrorString( ));
 		}

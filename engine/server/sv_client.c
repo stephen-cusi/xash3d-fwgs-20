@@ -1013,6 +1013,9 @@ void SV_RemoteCommand( netadr_t from, sizebuf_t *msg )
 	char		remaining[1024];
 	int		i;
 
+	if( !rcon_enable.value )
+		return;
+
 	Con_Printf( "Rcon from %s:\n%s\n", NET_AdrToString( from ), MSG_GetData( msg ) + 4 );
 	Log_Printf( "Rcon: \"%s\" from \"%s\"\n", MSG_GetData( msg ) + 4, NET_AdrToString( from ));
 	SV_BeginRedirect( from, RD_PACKET, outputbuf, sizeof( outputbuf ) - 16, SV_FlushRedirect );
@@ -2118,8 +2121,8 @@ SV_SendBuildInfo_f
 */
 static qboolean SV_SendBuildInfo_f( sv_client_t *cl )
 {
-	SV_ClientPrintf( cl, "Server running %s %s (build %i-%s, %s-%s)\n",
-		XASH_ENGINE_NAME, XASH_VERSION, Q_buildnum(), Q_buildcommit(), Q_buildos(), Q_buildarch() );
+	SV_ClientPrintf( cl, "Server running " XASH_ENGINE_NAME " " XASH_VERSION " (build %i-%s, %s-%s)\n",
+		Q_buildnum(), Q_buildcommit(), Q_buildos(), Q_buildarch() );
 	return true;
 }
 
@@ -2958,7 +2961,7 @@ void SV_ExecuteClientCommand( sv_client_t *cl, const char *s )
 			{
 				Con_Reportf( "enttools->%s(): %s\n", u->name, s );
 				Log_Printf( "\"%s<%i><%s><>\" performed: %s\n", Info_ValueForKey( cl->userinfo, "name" ),
-							cl->userid, SV_GetClientIDString( cl ), NET_AdrToString( cl->netchan.remote_address ), s );
+							cl->userid, SV_GetClientIDString( cl ), s );
 
 				if( u->func )
 					u->func( cl );

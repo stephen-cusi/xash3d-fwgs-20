@@ -165,6 +165,7 @@ extern convar_t	*host_framerate;
 extern convar_t	*host_maxfps;
 extern convar_t	sys_timescale;
 extern convar_t	cl_filterstuffcmd;
+extern convar_t	rcon_password;
 
 /*
 ==============================================================
@@ -393,6 +394,11 @@ typedef struct host_parm_s
 	// bug compatibility level, for very "special" games
 	bugcomp_t bugcomp;
 
+	// measure time to first frame
+	double starttime;
+
+	// count of sleeps can be inserted between frames
+	double pureframetime;
 } host_parm_t;
 
 extern host_parm_t	host;

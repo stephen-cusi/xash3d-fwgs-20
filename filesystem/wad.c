@@ -71,7 +71,6 @@ typedef struct
 
 struct wfile_s
 {
-	string		filename;
 	int		infotableofs;
 	int		numlumps;
 	poolhandle_t mempool;			// W_ReadLump temp buffers
@@ -120,7 +119,7 @@ static signed char W_TypeFromExt( const char *lumpname )
 	const wadtype_t	*type;
 
 	// we not known about filetype, so match only by filename
-	if( !Q_strcmp( ext, "*" ) || !Q_strcmp( ext, "" ))
+	if( !Q_strcmp( ext, "*" ) || !COM_CheckStringEmpty( ext ))
 		return TYP_ANY;
 
 	for( type = wad_types; type->ext; type++ )
@@ -155,6 +154,48 @@ static const char *W_ExtFromType( signed char lumptype )
 }
 
 /*
+===========
+W_FindLump
+
+Serach for already existed lump
+===========
+*/
+static dlumpinfo_t *W_FindLump( wfile_t *wad, const char *name, const signed char matchtype )
+{
+	int	left, right;
+
+	if( !wad || !wad->lumps || matchtype == TYP_NONE )
+		return NULL;
+
+	// look for the file (binary search)
+	left = 0;
+	right = wad->numlumps - 1;
+
+	while( left <= right )
+	{
+		int	middle = (left + right) / 2;
+		int	diff = Q_stricmp( wad->lumps[middle].name, name );
+
+		if( !diff )
+		{
+			if(( matchtype == TYP_ANY ) || ( matchtype == wad->lumps[middle].type ))
+				return &wad->lumps[middle]; // found
+			else if( wad->lumps[middle].type < matchtype )
+				diff = 1;
+			else if( wad->lumps[middle].type > matchtype )
+				diff = -1;
+			else break; // not found
+		}
+
+		// if we're too far in the list
+		if( diff > 0 ) right = middle - 1;
+		else left = middle + 1;
+	}
+
+	return NULL;
+}
+
+/*
 ====================
 W_AddFileToWad
 
@@ -162,7 +203,7 @@ Add a file to the list of files contained into a package
 and sort LAT in alpha-bethical order
 ====================
 */
-static dlumpinfo_t *W_AddFileToWad( const char *name, wfile_t *wad, dlumpinfo_t *newlump )
+static dlumpinfo_t *W_AddFileToWad( const char *wadfile, const char *name, wfile_t *wad, dlumpinfo_t *newlump )
 {
 	int		left, right;
 	dlumpinfo_t	*plump;
@@ -182,7 +223,7 @@ static dlumpinfo_t *W_AddFileToWad( const char *name, wfile_t *wad, dlumpinfo_t 
 				diff = 1;
 			else if( wad->lumps[middle].type > newlump->type )
 				diff = -1;
-			else Con_Reportf( S_WARN "Wad %s contains the file %s several times\n", wad->filename, name );
+			else Con_Reportf( S_WARN "Wad %s contains the file %s several times\n", wadfile, name );
 		}
 
 		// If we're too far in the list
@@ -271,7 +312,6 @@ static wfile_t *W_Open( const char *filename, int *error )
 	}
 
 	// copy wad name
-	Q_strncpy( wad->filename, filename, sizeof( wad->filename ));
 	wad->filetime = FS_SysFileTime( filename );
 	wad->mempool = Mem_AllocPool( filename );
 
@@ -324,7 +364,7 @@ static wfile_t *W_Open( const char *filename, int *error )
 
 	if( FS_Read( wad->handle, srclumps, lat_size ) != lat_size )
 	{
-		Con_Reportf( S_ERROR "W_ReadLumpTable: %s has corrupted lump allocation table\n", wad->filename );
+		Con_Reportf( S_ERROR "W_ReadLumpTable: %s has corrupted lump allocation table\n", filename );
 		if( error ) *error = WAD_LOAD_CORRUPTED;
 		Mem_Free( srclumps );
 		FS_CloseWAD( wad );
@@ -352,7 +392,7 @@ static wfile_t *W_Open( const char *filename, int *error )
 		if( srclumps[i].type == 68 && !Q_stricmp( srclumps[i].name, "conchars" ))
 			srclumps[i].type = TYP_GFXPIC;
 
-		W_AddFileToWad( name, wad, &srclumps[i] );
+		W_AddFileToWad( filename, name, wad, &srclumps[i] );
 	}
 
 	// release source lumps
@@ -360,6 +400,163 @@ static wfile_t *W_Open( const char *filename, int *error )
 
 	// and leave the file open
 	return wad;
+}
+
+/*
+===========
+FS_FileTime_WAD
+
+===========
+*/
+static int FS_FileTime_WAD( searchpath_t *search, const char *filename )
+{
+	return search->wad->filetime;
+}
+
+/*
+===========
+FS_PrintInfo_WAD
+
+===========
+*/
+static void FS_PrintInfo_WAD( searchpath_t *search, char *dst, size_t size )
+{
+	Q_snprintf( dst, size, "%s (%i files)", search->filename, search->wad->numlumps );
+}
+
+/*
+===========
+FS_FindFile_WAD
+
+===========
+*/
+static int FS_FindFile_WAD( searchpath_t *search, const char *path )
+{
+	dlumpinfo_t	*lump;
+	signed char		type = W_TypeFromExt( path );
+	qboolean		anywadname = true;
+	string		wadname, wadfolder;
+	string		shortname;
+
+	// quick reject by filetype
+	if( type == TYP_NONE )
+		return -1;
+
+	COM_ExtractFilePath( path, wadname );
+	wadfolder[0] = '\0';
+
+	if( COM_CheckStringEmpty( wadname ) )
+	{
+		COM_FileBase( wadname, wadname );
+		Q_strncpy( wadfolder, wadname, sizeof( wadfolder ));
+		COM_DefaultExtension( wadname, ".wad" );
+		anywadname = false;
+	}
+
+	// make wadname from wad fullpath
+	COM_FileBase( search->filename, shortname );
+	COM_DefaultExtension( shortname, ".wad" );
+
+	// quick reject by wadname
+	if( !anywadname && Q_stricmp( wadname, shortname ))
+		return -1;
+
+	// NOTE: we can't using long names for wad,
+	// because we using original wad names[16];
+	COM_FileBase( path, shortname );
+
+	lump = W_FindLump( search->wad, shortname, type );
+
+	if( lump )
+	{
+		return lump - search->wad->lumps;
+	}
+
+	return -1;
+}
+
+/*
+===========
+FS_Search_WAD
+
+===========
+*/
+static void FS_Search_WAD( searchpath_t *search, stringlist_t *list, const char *pattern, int caseinsensitive )
+{
+	string	wadpattern, wadname, temp2;
+	signed char	type = W_TypeFromExt( pattern );
+	qboolean	anywadname = true;
+	string	wadfolder, temp;
+	int j, i;
+	const char *slash, *backslash, *colon, *separator;
+
+	// quick reject by filetype
+	if( type == TYP_NONE )
+		return;
+
+	COM_ExtractFilePath( pattern, wadname );
+	COM_FileBase( pattern, wadpattern );
+	wadfolder[0] = '\0';
+
+	if( COM_CheckStringEmpty( wadname ))
+	{
+		COM_FileBase( wadname, wadname );
+		Q_strncpy( wadfolder, wadname, sizeof( wadfolder ));
+		COM_DefaultExtension( wadname, ".wad" );
+		anywadname = false;
+	}
+
+	// make wadname from wad fullpath
+	COM_FileBase( search->filename, temp2 );
+	COM_DefaultExtension( temp2, ".wad" );
+
+	// quick reject by wadname
+	if( !anywadname && Q_stricmp( wadname, temp2 ))
+		return;
+
+	for( i = 0; i < search->wad->numlumps; i++ )
+	{
+		// if type not matching, we already have no chance ...
+		if( type != TYP_ANY && search->wad->lumps[i].type != type )
+			continue;
+
+		// build the lumpname with image suffix (if present)
+		Q_strncpy( temp, search->wad->lumps[i].name, sizeof( temp ));
+
+		while( temp[0] )
+		{
+			if( matchpattern( temp, wadpattern, true ))
+			{
+				for( j = 0; j < list->numstrings; j++ )
+				{
+					if( !Q_strcmp( list->strings[j], temp ))
+						break;
+				}
+
+				if( j == list->numstrings )
+				{
+					// build path: wadname/lumpname.ext
+					Q_snprintf( temp2, sizeof(temp2), "%s/%s", wadfolder, temp );
+					COM_DefaultExtension( temp2, va(".%s", W_ExtFromType( search->wad->lumps[i].type )));
+					stringlistappend( list, temp2 );
+				}
+			}
+
+			// strip off one path element at a time until empty
+			// this way directories are added to the listing if they match the pattern
+			slash = Q_strrchr( temp, '/' );
+			backslash = Q_strrchr( temp, '\\' );
+			colon = Q_strrchr( temp, ':' );
+			separator = temp;
+			if( separator < slash )
+				separator = slash;
+			if( separator < backslash )
+				separator = backslash;
+			if( separator < colon )
+				separator = colon;
+			*((char *)separator) = 0;
+		}
+	}
 }
 
 /*
@@ -376,7 +573,7 @@ qboolean FS_AddWad_Fullpath( const char *wadfile, qboolean *already_loaded, int 
 
 	for( search = fs_searchpaths; search; search = search->next )
 	{
-		if( search->type == SEARCHPATH_WAD && !Q_stricmp( search->wad->filename, wadfile ))
+		if( search->type == SEARCHPATH_WAD && !Q_stricmp( search->filename, wadfile ))
 		{
 			if( already_loaded ) *already_loaded = true;
 			return true; // already loaded
@@ -392,29 +589,28 @@ qboolean FS_AddWad_Fullpath( const char *wadfile, qboolean *already_loaded, int 
 	if( wad )
 	{
 		search = (searchpath_t *)Mem_Calloc( fs_mempool, sizeof( searchpath_t ));
+		Q_strncpy( search->filename, wadfile, sizeof( search->filename ));
 		search->wad = wad;
 		search->type = SEARCHPATH_WAD;
 		search->next = fs_searchpaths;
-		search->flags |= flags;
+		search->flags = flags;
 
-		search->printinfo = FS_PrintInfo_WAD;
-		search->close = FS_Close_WAD;
-		search->openfile = FS_OpenFile_WAD;
-		search->filetime = FS_FileTime_WAD;
-		search->findfile = FS_FindFile_WAD;
-		search->search = FS_Search_WAD;
+		search->pfnPrintInfo = FS_PrintInfo_WAD;
+		search->pfnClose = FS_Close_WAD;
+		search->pfnOpenFile = FS_OpenFile_WAD;
+		search->pfnFileTime = FS_FileTime_WAD;
+		search->pfnFindFile = FS_FindFile_WAD;
+		search->pfnSearch = FS_Search_WAD;
 
 		fs_searchpaths = search;
 
 		Con_Reportf( "Adding wadfile: %s (%i files)\n", wadfile, wad->numlumps );
 		return true;
 	}
-	else
-	{
-		if( errorcode != WAD_LOAD_NO_FILES )
-			Con_Reportf( S_ERROR "FS_AddWad_Fullpath: unable to load wad \"%s\"\n", wadfile );
-		return false;
-	}
+
+	if( errorcode != WAD_LOAD_NO_FILES )
+		Con_Reportf( S_ERROR "FS_AddWad_Fullpath: unable to load wad \"%s\"\n", wadfile );
+	return false;
 }
 
 /*
@@ -424,48 +620,6 @@ WADSYSTEM PRIVATE ROUTINES
 
 =============================================================================
 */
-
-/*
-===========
-W_FindLump
-
-Serach for already existed lump
-===========
-*/
-static dlumpinfo_t *W_FindLump( wfile_t *wad, const char *name, const signed char matchtype )
-{
-	int	left, right;
-
-	if( !wad || !wad->lumps || matchtype == TYP_NONE )
-		return NULL;
-
-	// look for the file (binary search)
-	left = 0;
-	right = wad->numlumps - 1;
-
-	while( left <= right )
-	{
-		int	middle = (left + right) / 2;
-		int	diff = Q_stricmp( wad->lumps[middle].name, name );
-
-		if( !diff )
-		{
-			if(( matchtype == TYP_ANY ) || ( matchtype == wad->lumps[middle].type ))
-				return &wad->lumps[middle]; // found
-			else if( wad->lumps[middle].type < matchtype )
-				diff = 1;
-			else if( wad->lumps[middle].type > matchtype )
-				diff = -1;
-			else break; // not found
-		}
-
-		// if we're too far in the list
-		if( diff > 0 ) right = middle - 1;
-		else left = middle + 1;
-	}
-
-	return NULL;
-}
 
 /*
 ===========
@@ -527,138 +681,4 @@ byte *FS_LoadWADFile( const char *path, fs_offset_t *lumpsizeptr, qboolean gamed
 	if( search && search->type == SEARCHPATH_WAD )
 		return W_ReadLump( search->wad, &search->wad->lumps[index], lumpsizeptr );
 	return NULL;
-}
-
-int FS_FileTime_WAD( searchpath_t *search, const char *filename )
-{
-	return search->wad->filetime;
-}
-
-void FS_PrintInfo_WAD( searchpath_t *search, char *dst, size_t size )
-{
-	Q_snprintf( dst, size, "%s (%i files)", search->wad->filename, search->wad->numlumps );
-}
-
-int FS_FindFile_WAD( searchpath_t *search, const char *path )
-{
-	dlumpinfo_t	*lump;
-	signed char		type = W_TypeFromExt( path );
-	qboolean		anywadname = true;
-	string		wadname, wadfolder;
-	string		shortname;
-
-	// quick reject by filetype
-	if( type == TYP_NONE )
-		return -1;
-
-	COM_ExtractFilePath( path, wadname );
-	wadfolder[0] = '\0';
-
-	if( COM_CheckStringEmpty( wadname ) )
-	{
-		COM_FileBase( wadname, wadname );
-		Q_strncpy( wadfolder, wadname, sizeof( wadfolder ));
-		COM_DefaultExtension( wadname, ".wad" );
-		anywadname = false;
-	}
-
-	// make wadname from wad fullpath
-	COM_FileBase( search->wad->filename, shortname );
-	COM_DefaultExtension( shortname, ".wad" );
-
-	// quick reject by wadname
-	if( !anywadname && Q_stricmp( wadname, shortname ))
-		return -1;
-
-	// NOTE: we can't using long names for wad,
-	// because we using original wad names[16];
-	COM_FileBase( path, shortname );
-
-	lump = W_FindLump( search->wad, shortname, type );
-
-	if( lump )
-	{
-		return lump - search->wad->lumps;
-	}
-
-	return -1;
-
-}
-
-void FS_Search_WAD( searchpath_t *search, stringlist_t *list, const char *pattern, int caseinsensitive )
-{
-	string	wadpattern, wadname, temp2;
-	signed char	type = W_TypeFromExt( pattern );
-	qboolean	anywadname = true;
-	string	wadfolder, temp;
-	int j, i;
-	const char *slash, *backslash, *colon, *separator;
-
-	// quick reject by filetype
-	if( type == TYP_NONE )
-		return;
-
-	COM_ExtractFilePath( pattern, wadname );
-	COM_FileBase( pattern, wadpattern );
-	wadfolder[0] = '\0';
-
-	if( COM_CheckStringEmpty( wadname ))
-	{
-		COM_FileBase( wadname, wadname );
-		Q_strncpy( wadfolder, wadname, sizeof( wadfolder ));
-		COM_DefaultExtension( wadname, ".wad" );
-		anywadname = false;
-	}
-
-	// make wadname from wad fullpath
-	COM_FileBase( search->wad->filename, temp2 );
-	COM_DefaultExtension( temp2, ".wad" );
-
-	// quick reject by wadname
-	if( !anywadname && Q_stricmp( wadname, temp2 ))
-		return;
-
-	for( i = 0; i < search->wad->numlumps; i++ )
-	{
-		// if type not matching, we already have no chance ...
-		if( type != TYP_ANY && search->wad->lumps[i].type != type )
-			continue;
-
-		// build the lumpname with image suffix (if present)
-		Q_strncpy( temp, search->wad->lumps[i].name, sizeof( temp ));
-
-		while( temp[0] )
-		{
-			if( matchpattern( temp, wadpattern, true ))
-			{
-				for( j = 0; j < list->numstrings; j++ )
-				{
-					if( !Q_strcmp( list->strings[j], temp ))
-						break;
-				}
-
-				if( j == list->numstrings )
-				{
-					// build path: wadname/lumpname.ext
-					Q_snprintf( temp2, sizeof(temp2), "%s/%s", wadfolder, temp );
-					COM_DefaultExtension( temp2, va(".%s", W_ExtFromType( search->wad->lumps[i].type )));
-					stringlistappend( list, temp2 );
-				}
-			}
-
-			// strip off one path element at a time until empty
-			// this way directories are added to the listing if they match the pattern
-			slash = Q_strrchr( temp, '/' );
-			backslash = Q_strrchr( temp, '\\' );
-			colon = Q_strrchr( temp, ':' );
-			separator = temp;
-			if( separator < slash )
-				separator = slash;
-			if( separator < backslash )
-				separator = backslash;
-			if( separator < colon )
-				separator = colon;
-			*((char *)separator) = 0;
-		}
-	}
 }
