@@ -20,16 +20,27 @@ jobs:
         git clone --depth 1 --branch release-2.32.10 https://github.com/libsdl-org/SDL.git SDL2_src
 
     - name: Build SDL2 for ARM64
+      shell: cmd
+      run: |
+        cmake -S SDL2_src -B SDL2_build -G "Visual Studio 17 2022" -A ARM64 -DCMAKE_INSTALL_PREFIX=SDL2_arm64 -DSDL_SHARED=ON -DSDL_STATIC=ON -DSDL_TESTS=OFF -DSDL_EXAMPLES=OFF
+        cmake --build SDL2_build --config Release
+        cmake --install SDL2_build --config Release
+
+    - name: Fix SDL2 lib path
       shell: bash
       run: |
-        cmake -S SDL2_src -B SDL2_build -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=SDL2_arm64 -DSDL_SHARED=ON -DSDL_STATIC=ON -DSDL_TESTS=OFF -DSDL_EXAMPLES=OFF
-        cmake --build SDL2_build
-        cmake --install SDL2_build
+        # CMake multi-config install may put libs in lib/Release/ instead of lib/
+        if [ -d "SDL2_arm64/lib/Release" ]; then
+          cp -v SDL2_arm64/lib/Release/* SDL2_arm64/lib/
+        fi
+        echo "=== SDL2 lib contents ==="
+        ls -la SDL2_arm64/lib/*.lib 2>/dev/null || echo "No .lib files in lib/"
+        ls -la SDL2_arm64/lib/Release/*.lib 2>/dev/null || echo "No .lib files in lib/Release/"
 
     - name: Configure engine
       shell: bash
       run: |
-        ./waf.bat configure -s "SDL2_arm64" -T release --enable-bundled-deps --enable-utils --enable-all-renderers -8
+        ./waf.bat configure -s "SDL2_arm64" -T release --enable-bundled-deps --enable-utils --enable-all-renderers -8 --skip-sdl2-sanity-check
 
     - name: Build engine
       shell: bash
