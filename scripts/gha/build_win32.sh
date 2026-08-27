@@ -7,7 +7,7 @@ cd "$BUILDDIR" || die
 
 WAF_EXTRA_ARGS=""
 
-if [ "$ARCH" = "amd64" ]; then # we need enabling 64-bit target only on Intel-compatible CPUs
+if [ "$ARCH" = "amd64" ] || [ "$ARCH" = "arm64" ]; then
 	WAF_EXTRA_ARGS="-8"
 fi
 
@@ -20,8 +20,15 @@ fi
 # NOTE: to build with other version use --msvc_version during configuration
 # NOTE: sometimes you may need to add WinSDK to %PATH%
 # NOTE: --enable-msvcdeps only used for CI builds, enabling it non-English versions of MSVC causes useless console spam
+if [ "$ARCH" = "arm64" ]; then
+	SDL_PATH="SDL2_arm64"
+	WAF_EXTRA_ARGS+=" --enable-bundled-deps --enable-all-renderers --skip-sdl2-sanity-check"
+else
+	SDL_PATH="SDL2_VC"
+fi
+
 # shellcheck disable=SC2086
-./waf.bat configure -s "SDL2_VC" -T release --enable-utils --enable-tests --enable-lto --enable-msvcdeps --enable-tui $WAF_EXTRA_ARGS || die_configure
+./waf.bat configure -s "$SDL_PATH" -T release --enable-utils --enable-tests --enable-lto --enable-msvcdeps --enable-tui $WAF_EXTRA_ARGS || die_configure
 ./waf.bat build || die
 ./waf.bat install --destdir=. || die
 
@@ -31,6 +38,8 @@ if [ "$ARCH" = "i386" ]; then
 elif [ "$ARCH" = "amd64" ]; then
 	cp -v SDL2_VC/lib/x64/SDL2.dll .
 	cp -v SDL2_VC/lib/x64/SDL2.pdb .
+elif [ "$ARCH" = "arm64" ]; then
+	cp -v SDL2_arm64/bin/SDL2.dll .
 else
 	die
 fi
