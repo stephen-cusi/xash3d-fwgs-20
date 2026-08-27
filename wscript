@@ -229,12 +229,24 @@ def options(opt):
 
 def configure(conf):
 	conf.load('fwgslib reconfigure compiler_optimizations')
+	# Detect ARM64 natively (WoA: Windows on ARM)
+	is_arm64_native = (os.environ.get('PROCESSOR_ARCHITECTURE', '').upper() == 'ARM64')
+
 	if conf.options.ALLOW64:
-		conf.env.MSVC_TARGETS = ['x64']
+		if is_arm64_native:
+			conf.env.MSVC_TARGETS = ['arm64']
+		else:
+			conf.env.MSVC_TARGETS = ['x64']
 	elif sys.maxsize > 2 ** 32 and not conf.options.MSVC_WINE:
-		conf.env.MSVC_TARGETS = ['amd64_x86', 'x86']
+		if is_arm64_native:
+			conf.env.MSVC_TARGETS = ['arm64']
+		else:
+			conf.env.MSVC_TARGETS = ['amd64_x86', 'x86']
 	else:
-		conf.env.MSVC_TARGETS = ['x86']
+		if is_arm64_native:
+			conf.env.MSVC_TARGETS = ['arm64']
+		else:
+			conf.env.MSVC_TARGETS = ['x86']
 
 	# Load compilers early
 	conf.load('xshlib xcompile compiler_c compiler_cxx')
@@ -256,6 +268,8 @@ def configure(conf):
 	# HACKHACK: override msvc DEST_CPU value by something that we understand
 	if conf.env.DEST_CPU == 'amd64':
 		conf.env.DEST_CPU = 'x86_64'
+	elif conf.env.DEST_CPU == 'arm64':
+		conf.env.DEST_CPU = 'aarch64'
 
 	if conf.env.COMPILER_CC == 'msvc':
 		conf.load('msvc_pdb')
@@ -303,8 +317,11 @@ def configure(conf):
 	# to restrict them to 32-bit engine, despite GoldSrc is still officially supported.
 	# There is now `-4` (or `--32bits`) configure flag for those
 	# who want to specifically build engine for 32-bit
+	# NOTE: ARM64 (e.g. Windows on ARM) always builds 64-bit, no 32-bit restriction needed.
 	if conf.env.DEST_OS in ['win32', 'linux'] and conf.env.DEST_CPU == 'x86_64':
 		force_32bit = not conf.options.ALLOW64
+	elif conf.env.DEST_OS == 'win32' and conf.env.DEST_CPU == 'aarch64':
+		force_32bit = False  # ARM64 always 64-bit
 	else:
 		force_32bit = conf.options.FORCE32
 

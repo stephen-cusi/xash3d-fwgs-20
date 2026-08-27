@@ -77,6 +77,10 @@ def sdl2_configure_path(conf, path, libname):
 		if conf.env.DEST_OS == 'win32' and conf.env.COMPILER_CC == 'msvc':
 			if conf.env.DEST_CPU == 'x86_64':
 				libpath = 'lib/x64'
+			elif conf.env.DEST_CPU == 'aarch64':
+				# SDL2 CMake build installs to lib/ for ARM64
+				# Also check lib/ARM64 and lib/arm64 for pre-built packages
+				libpath = 'lib'
 			else:
 				libpath = 'lib/' + conf.env.DEST_CPU
 		conf.env[LIBPATH] = [os.path.abspath(os.path.join(path, libpath))]
