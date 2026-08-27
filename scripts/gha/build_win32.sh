@@ -22,7 +22,7 @@ fi
 # NOTE: --enable-msvcdeps only used for CI builds, enabling it non-English versions of MSVC causes useless console spam
 if [ "$ARCH" = "arm64" ]; then
 	SDL_PATH="SDL2_arm64"
-	WAF_EXTRA_ARGS+=" --enable-bundled-deps --enable-all-renderers --skip-sdl2-sanity-check"
+	WAF_EXTRA_ARGS+=" --enable-bundled-deps --skip-sdl2-sanity-check"
 else
 	SDL_PATH="SDL2_VC"
 fi
