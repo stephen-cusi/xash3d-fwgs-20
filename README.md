@@ -103,6 +103,21 @@ This repository contains our fork of HLSDK and restored source code for Half-Lif
 
 * Clone this repostory: `$ git clone --recursive https://github.com/FWGS/xash3d-fwgs`.
 
+#### Windows on ARM (ARM64)
+* Same prerequisites as Windows (Visual Studio), but install the ARM64 workload.
+* SDL2 official VC package does not include ARM64. You need to build SDL2 from source:
+  ```
+  git clone --depth 1 --branch release-2.32.10 https://github.com/libsdl-org/SDL.git SDL2_src
+  cmake -S SDL2_src -B SDL2_build -G "Visual Studio 17 2022" -A ARM64 -DCMAKE_INSTALL_PREFIX=SDL2_arm64
+  cmake --build SDL2_build --config Release
+  cmake --install SDL2_build --config Release
+  ```
+* Configure and build with `-8` flag:
+  ```
+  waf configure -s SDL2_arm64 -8 -T release --enable-bundled-deps --skip-sdl2-sanity-check
+  waf build
+  ```
+
 #### iOS/iPadOS
 * Install Xcode from the appstore.
 * Install [Homebrew package manager](https://brew.sh).
