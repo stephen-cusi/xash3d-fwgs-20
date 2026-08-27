@@ -1,0 +1,65 @@
+name: Build Windows ARM64
+on: [push, pull_request]
+jobs:
+  build:
+    runs-on: windows-2022
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+      with:
+        submodules: recursive
+
+    - name: Set developer command prompt for Windows ARM64
+      uses: ilammy/msvc-dev-cmd@v1
+      with:
+        arch: arm64
+
+    - name: Install Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.x'
+
+    - name: Install SDL2
+      shell: bash
+      run: |
+        curl -L "http://libsdl.org/release/SDL2-devel-2.32.10-VC.zip" -o SDL2.zip
+        unzip -q SDL2.zip
+        mv "SDL2-2.32.10" SDL2_VC
+
+    - name: Download SDL2 ARM64 headers and libs
+      shell: bash
+      run: |
+        # SDL2 official VC package doesn't include ARM64, so we build from source
+        git clone --depth 1 --branch release-2.32.10 https://github.com/libsdl-org/SDL.git SDL2_src
+        cmake -S SDL2_src -B SDL2_build -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=SDL2_arm64 -DSDL_SHARED=ON -DSDL_STATIC=ON -DSDL_TESTS=OFF -DSDL_EXAMPLES=OFF
+        cmake --build SDL2_build
+        cmake --install SDL2_build
+
+    - name: Configure engine
+      shell: bash
+      run: |
+        ./waf.bat configure -s "SDL2_arm64" -T release --enable-bundled-deps --enable-utils --enable-all-renderers -8
+
+    - name: Build engine
+      shell: bash
+      run: |
+        ./waf.bat build
+
+    - name: Install engine
+      shell: bash
+      run: |
+        ./waf.bat install --destdir=.
+
+    - name: Package
+      shell: bash
+      run: |
+        cp SDL2_arm64/bin/SDL2.dll .
+        mkdir -p artifacts
+        7z a -t7z "artifacts/xash3d-fwgs-win32-arm64.7z" -m0=lzma2 -mx=9 -mfb=64 -md=32m -ms=on \
+          ./*.dll ./*.exe activities.txt
+
+    - name: Upload artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: xash3d-fwgs-windows-arm64
+        path: artifacts/*
