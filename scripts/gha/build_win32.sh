@@ -27,8 +27,13 @@ else
 	SDL_PATH="SDL2_VC"
 fi
 
-# shellcheck disable=SC2086
-./waf.bat configure -s "$SDL_PATH" -T release --enable-utils --enable-tests --enable-lto --enable-msvcdeps --enable-tui $WAF_EXTRA_ARGS || die_configure
+if [ "$ARCH" = "arm64" ]; then
+	# ARM64 CI: skip tests (xash_tests.exe requires GPU/display environment)
+	./waf.bat configure -s "$SDL_PATH" -T release --enable-utils --enable-lto --enable-msvcdeps --enable-tui $WAF_EXTRA_ARGS || die_configure
+else
+	# shellcheck disable=SC2086
+	./waf.bat configure -s "$SDL_PATH" -T release --enable-utils --enable-tests --enable-lto --enable-msvcdeps --enable-tui $WAF_EXTRA_ARGS || die_configure
+fi
 ./waf.bat build || die
 ./waf.bat install --destdir=. || die
 
