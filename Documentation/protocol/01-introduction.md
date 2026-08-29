@@ -1,5 +1,3 @@
-🌐 [English](01-introduction.md) | 🇨🇳 [中文](01-introduction.zh-CN.md)
-
 # Xash3D FWGS protocol support
 
 Xash3D FWGS currently supports four network protocols:

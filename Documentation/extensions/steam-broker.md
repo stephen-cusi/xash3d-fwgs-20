@@ -1,5 +1,3 @@
-🌐 [English](steam-broker.md) | 🇨🇳 [中文](steam-broker.zh-CN.md)
-
 # Steam API Broker Protocol Specification
 
 ## Overview

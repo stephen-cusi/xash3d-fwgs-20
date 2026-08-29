@@ -1,5 +1,3 @@
-🌐 [English](ports.md) | 🇨🇳 [中文](ports.zh-CN.md)
-
 Xash3D FWGS is intended to be easily portable for various platforms, however main issue is maintaining such ports. 
 
 This page is about merged ports to main source tree and responsible for it developers.

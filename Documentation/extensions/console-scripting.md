@@ -1,5 +1,3 @@
-🌐 [English](console-scripting.md) | 🇨🇳 [中文](console-scripting.zh-CN.md)
-
 ## Console variables
 
 Console variables (or CVars) are present in all quake-based games.

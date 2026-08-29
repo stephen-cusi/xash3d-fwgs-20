@@ -1,5 +1,3 @@
-🌐 [English](native-object.md) | 🇨🇳 [中文](native-object.zh-CN.md)
-
 # GetNativeObject API
 
 To be able to use platform-specific features or get optional engine interfaces, we've added a simple call to MobilityAPI on client DLL and PhysicsAPI for server DLL and extended MenuAPI for menu DLL.

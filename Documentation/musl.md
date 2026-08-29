@@ -1,5 +1,3 @@
-🌐 [English](musl.md) | 🇨🇳 [中文](musl.zh-CN.md)
-
 # Xash3D FWGS on `musl`
 
 Xash3D FWGS works on `musl` out of the box. However, the engine doesn't try to differentiate glibc and musl anymore. If you see error similar to:

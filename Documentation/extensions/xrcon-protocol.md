@@ -1,5 +1,3 @@
-🌐 [English](xrcon-protocol.md) | 🇨🇳 [中文](xrcon-protocol.zh-CN.md)
-
 # XRCON Protocol Specification
 
 ## Overview

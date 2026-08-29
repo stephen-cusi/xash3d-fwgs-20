@@ -1,5 +1,3 @@
-🌐 [English](sounds.lst.md) | 🇨🇳 [中文](sounds.lst.zh-CN.md)
-
 # sounds.lst.md
 
 Using sounds.lst located in scripts folder, modder can override some of the hardcoded sounds in temp entities and server physics.

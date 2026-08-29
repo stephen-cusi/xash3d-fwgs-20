@@ -1,5 +1,3 @@
-🌐 [English](http-server-list.md) | 🇨🇳 [中文](http-server-list.zh-CN.md)
-
 # Static HTTP server list
 
 Replacement for the UDP `S2M_SCAN_REQUEST` / `M2A_SERVERSLIST` exchange

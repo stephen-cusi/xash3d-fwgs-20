@@ -1,5 +1,3 @@
-🌐 [English](touch-controls.md) | 🇨🇳 [中文](touch-controls.zh-CN.md)
-
 # Touch controls configuring
 
 ## Introduction

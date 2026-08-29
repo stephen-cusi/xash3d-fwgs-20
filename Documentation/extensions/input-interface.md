@@ -1,5 +1,3 @@
-🌐 [English](input-interface.md) | 🇨🇳 [中文](input-interface.zh-CN.md)
-
 ## Purpose
 
 Clients have different platform-depended input code now.

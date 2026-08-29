@@ -1,5 +1,3 @@
-🌐 [English](cross-compiling-for-windows-with-wine.md) | 🇨🇳 [中文](cross-compiling-for-windows-with-wine.zh-CN.md)
-
 # Cross-compiling for Windows with Wine
 
 This can be useful to test engine in Wine without using virtual machines or dual-booting to Windows.

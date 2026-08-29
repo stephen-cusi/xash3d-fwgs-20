@@ -1,5 +1,3 @@
-🌐 [English](entity-tools.md) | 🇨🇳 [中文](entity-tools.zh-CN.md)
-
 # Entity tools
 
 For some features described below, you need to enable [console scripting](https://github.com/FWGS/xash3d-fwgs/blob/master/Documentation/extensions/console-scripting.md) with command `cmd_scripting 1` in console.

@@ -1,5 +1,3 @@
-🌐 [English](goldsrc-protocol-support.md) | 🇨🇳 [中文](goldsrc-protocol-support.zh-CN.md)
-
 # Support for GoldSrc network protocol
 For connecting to GoldSrc-based servers, use this command:
 ```

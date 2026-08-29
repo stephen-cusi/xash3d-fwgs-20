@@ -1,5 +1,3 @@
-🌐 [English](setting-up-qt-creator.md) | 🇨🇳 [中文](setting-up-qt-creator.zh-CN.md)
-
 ## Setting up Xash3D FWGS in Qt Creator
 
 ### Intro

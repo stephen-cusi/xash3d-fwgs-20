@@ -1,5 +1,3 @@
-🌐 [English](debugging-using-minidumps.md) | 🇨🇳 [中文](debugging-using-minidumps.zh-CN.md)
-
 # Debugging your mod using minidump files (Windows only)
 Minidump files is awesome instrument for debugging your mod after it's being released, or for catch specific crashes which are presented only in one specific configuration, but doesn't happens in other configurations or even on developer machine. It contains a lot of information useful for debugging, and therefore it size is not so small: around hundreds or even thousands of megabytes. But this is not a problem, since minidump files compresses very effectively using common algorithms.
 There are short algorithm, explaining how to use this debugging instrument:

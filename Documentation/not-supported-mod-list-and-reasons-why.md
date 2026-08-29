@@ -1,5 +1,3 @@
-🌐 [English](not-supported-mod-list-and-reasons-why.md) | 🇨🇳 [中文](not-supported-mod-list-and-reasons-why.zh-CN.md)
-
 # Not supported mods and reasons why
 
 |Name							|Version			|Why not working						|What was made for that

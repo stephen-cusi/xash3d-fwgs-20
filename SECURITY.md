@@ -1,5 +1,3 @@
-🌐 [English](SECURITY.md) | 🇨🇳 [中文](SECURITY.zh-CN.md)
-
 # Xash3D FWGS Security Policy
 
 ## Supported versions

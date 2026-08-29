@@ -1,5 +1,3 @@
-🌐 [English](CONTRIBUTING.md) | 🇨🇳 [中文](CONTRIBUTING.zh-CN.md)
-
 ## If you are reporting bugs
 
 1. Check that you are using the latest version. To build the latest Xash3D FWGS, look at README.md.
