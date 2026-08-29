@@ -1,3 +1,5 @@
+🌐 [English](mod-porting-guide.md) | 🇨🇳 [中文](mod-porting-guide.zh-CN.md)
+
 # Self-made port
 ## Compatibility with RISC architectures
 ### Unaligned access

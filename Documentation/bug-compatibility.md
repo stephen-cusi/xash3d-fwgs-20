@@ -1,3 +1,5 @@
+🌐 [English](bug-compatibility.md) | 🇨🇳 [中文](bug-compatibility.zh-CN.md)
+
 # Bug-compatibility in Xash3D FWGS
 
 Xash3D FWGS has special mode for games that rely on original engine bugs. In this mode, we emulate the behaviour of selected functions that may help running mods relying on engine bugs, but enabling them by default may break majority of other games.

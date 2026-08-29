@@ -1,3 +1,5 @@
+🌐 [English](gameinfo.md) | 🇨🇳 [中文](gameinfo.zh-CN.md)
+
 # Game definition and information file
 
 gameinfo.txt is an essential part of any Xash3D based game. It allows basic customization for games creators, like setting game title, DLL paths, etc.

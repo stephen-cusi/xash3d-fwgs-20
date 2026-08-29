@@ -1,3 +1,5 @@
+🌐 [English](donate.md) | 🇨🇳 [中文](donate.zh-CN.md)
+
 # Developers donation page
 
 On this page you can find links where you can support each developer individually, who has provided public sponsorship information.

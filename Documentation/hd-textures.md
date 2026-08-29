@@ -1,3 +1,5 @@
+🌐 [English](hd-textures.md) | 🇨🇳 [中文](hd-textures.zh-CN.md)
+
 ### HD (external) textures support
 
 Xash3D supports loading texture replacements in TGA format for almost all types of models in the game, except alias models at this time.

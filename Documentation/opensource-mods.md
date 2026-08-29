@@ -1,3 +1,5 @@
+🌐 [English](opensource-mods.md) | 🇨🇳 [中文](opensource-mods.zh-CN.md)
+
 Source code of this mods is available for modders and porters in public access.
 
 # Original Work

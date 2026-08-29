@@ -1,3 +1,5 @@
+🌐 [English](environment-variables.md) | 🇨🇳 [中文](environment-variables.zh-CN.md)
+
 ## Environment variables
 
 #### Xash3D FWGS

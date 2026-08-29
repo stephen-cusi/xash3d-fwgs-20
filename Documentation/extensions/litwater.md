@@ -1,3 +1,5 @@
+🌐 [English](litwater.md) | 🇨🇳 [中文](litwater.zh-CN.md)
+
 ## Lightmapped water
 
 Xash3D FWGS supports lightmapped water, as an extension. It adds three new cvars and new worldspawn key values.

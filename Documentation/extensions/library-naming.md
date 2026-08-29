@@ -1,3 +1,5 @@
+🌐 [English](library-naming.md) | 🇨🇳 [中文](library-naming.zh-CN.md)
+
 I propose a new library naming scheme, which will allow to distribute mods and games in single archive to different operating systems and CPUs:
 
 Legend:

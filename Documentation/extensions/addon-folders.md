@@ -1,3 +1,5 @@
+🌐 [English](addon-folders.md) | 🇨🇳 [中文](addon-folders.zh-CN.md)
+
 # Addon folders in Xash3D FWGS
 
 Xash3D FWGS supports both GoldSource-style addon folders and has few own. Each directory can have it's own archives that will be mounted with lower priority than directory itself.

@@ -1,3 +1,5 @@
+🌐 [English](nat-bypass-usage.md) | 🇨🇳 [中文](nat-bypass-usage.zh-CN.md)
+
 # NAT bypass feature in Xash3D FWGS
 Since IPv6 not as widespread as we would like, NAT (Network Address Translation) still being actively used by many internet service providers in an attempts to
 mitigate IPv4 addresses exhaustion. In short, they uses one IPv4 address and doing some tricks with ports to represent many other users behind this address.
